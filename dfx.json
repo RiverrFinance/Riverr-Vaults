@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "Vaults_backend": {
-      "candid": "src/Vaults_backend/Vaults_backend.did",
-      "package": "Vaults_backend",
+    "Vaults": {
+      "candid": "src/vault.did",
+      "package": "vault",
       "type": "rust"
     }
   },
