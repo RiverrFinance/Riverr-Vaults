@@ -11,7 +11,7 @@ use super::*;
 
 use crate::types::VaultDetails;
 
-use crate::core_lib::token::{Asset, AssetType};
+use crate::core_lib::asset::{Asset, AssetType};
 
 const TOKEN_WASM: &str = "target/wasm32-unknown-unknown/release/token.wasm";
 const VAULT_WASM: &str = "target/wasm32-unknown-unknown/release/vault.wasm";

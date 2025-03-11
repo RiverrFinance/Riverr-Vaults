@@ -1,4 +1,4 @@
-use crate::core_lib::token::Asset;
+use crate::core_lib::asset::Asset;
 
 use candid::CandidType;
 
@@ -11,21 +11,11 @@ use ic_stable_structures::{storable::Bound, Storable};
 
 type Amount = u128;
 
-#[derive(CandidType, Serialize, Deserialize, Clone)]
+#[derive(CandidType, Serialize, Default, Deserialize, Clone)]
 pub struct VaultDetails {
     pub asset: Asset,
     pub virtual_asset: Asset,
     pub min_amount: Amount,
-}
-
-impl Default for VaultDetails {
-    fn default() -> Self {
-        VaultDetails {
-            asset: Asset::default(),
-            virtual_asset: Asset::default(),
-            min_amount: 0,
-        }
-    }
 }
 
 impl Storable for VaultDetails {
