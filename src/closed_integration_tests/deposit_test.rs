@@ -7,6 +7,11 @@ use icrc_ledger_types::icrc2::approve::ApproveArgs;
 pub mod testing_funding {
     use super::*;
 
+    #[test]
+    fn test_principal() {
+        print!("Principal: {:?}", Principal::anonymous().to_string());
+    }
+
     /// Tests that deposits fail when not approved
     ///
     /// This test verifies that:
