@@ -40,7 +40,9 @@ service : (VaultDetails) -> {
   createPositionValidityCheck : (principal, nat, nat) -> (bool, nat32);
   fundAccount : (nat, opt blob, principal) -> (Result_1);
   getUserMarginBalance : (principal) -> (nat) query;
-  getUserStakes : (principal) -> (vec record { nat64; StakeDetails }) query;
+  getUserStakes : (principal) -> (
+      vec record { nat64; StakeDetails; nat },
+    ) query;
   getVaultDetails : () -> (VaultDetails) query;
   getVaultStakingDetails : () -> (VaultStakingDetails) query;
   managePositionUpdate : (principal, nat, ManageDebtParams) -> ();

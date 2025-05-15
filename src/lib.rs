@@ -7,7 +7,7 @@ use icrc_ledger_types::icrc1::account::{Account, Subaccount};
 use ic_stable_structures::memory_manager::{MemoryId, MemoryManager, VirtualMemory};
 use ic_stable_structures::{DefaultMemoryImpl, StableBTreeMap, StableCell};
 
-use core_lib::staking::{StakeDetails, StakeSpan, VaultStakingDetails};
+use core_lib::lock::{LockDetails, LockSpan, VaultLockDetails};
 use types::VaultDetails;
 
 type Memory = VirtualMemory<DefaultMemoryImpl>;
@@ -30,11 +30,11 @@ thread_local! {
         reference.get(_VAULT_DETAILS_MEMORY_ID)
     }),VaultDetails::default()).unwrap());
 
-    static VAULT_STAKING_DETAILS :RefCell<StableCell<VaultStakingDetails,Memory>> = RefCell::new(StableCell::init(MEMORY_MANAGER.with_borrow(|reference|{
+    static VAULT_STAKING_DETAILS :RefCell<StableCell<VaultLockDetails,Memory>> = RefCell::new(StableCell::init(MEMORY_MANAGER.with_borrow(|reference|{
         reference.get(_VAULT_STAKING_DETAILS_MEMORY)
-    }),VaultStakingDetails::default()).unwrap());
+    }),VaultLockDetails::default()).unwrap());
 
-    static USERS_STAKES :RefCell<StableBTreeMap<(Principal,Time),StakeDetails,Memory>> = RefCell::new(StableBTreeMap::init(
+    static USERS_STAKES :RefCell<StableBTreeMap<(Principal,Time),LockDetails,Memory>> = RefCell::new(StableBTreeMap::init(
         MEMORY_MANAGER.with_borrow(|reference|{
         reference.get(_USERS_STAKES_DETAILS_MEMORY_ID)
     })));
@@ -93,7 +93,7 @@ fn get_user_margin_balance(user: Principal) -> Amount {
 /// - Returns empty vector if user has no active stakes
 /// - Stakes are ordered by timestamp
 #[ic_cdk::query(name = "getUserStakes")]
-fn get_user_stakes(user: Principal) -> Vec<(Time, StakeDetails)> {
+fn get_user_stakes(user: Principal) -> Vec<(Time, LockDetails, Amount)> {
     return _get_user_stakes(user);
 }
 
@@ -112,92 +112,13 @@ fn get_user_stakes(user: Principal) -> Vec<(Time, StakeDetails)> {
 /// - Helps determine if new positions can be opened
 /// - Provides data for fee distribution calculations
 #[ic_cdk::query(name = "getVaultStakingDetails")]
-fn get_vault_staking_details() -> VaultStakingDetails {
+fn get_vault_staking_details() -> VaultLockDetails {
     _get_vault_staking_details()
 }
 
 #[ic_cdk::query(name = "getVaultDetails")]
 fn get_vault_details() -> VaultDetails {
     _get_vault_details()
-}
-
-/// Validates and processes a position creation request
-///
-/// # Arguments
-/// * `user` - Principal ID of the user creating position
-/// * `collateral` - Amount of collateral to lock
-/// * `debt` - Amount of leverage to borrow
-///
-/// # Returns
-/// * `(bool, u32)` - (validity status, interest rate)
-///   - First value indicates if user has sufficient margin balance and vault has enough liquidity
-///   - Second value is the interest rate for the borrowed amount
-///
-/// If valid, updates user's margin balance and vault's free liquidity by reducing both
-#[ic_cdk::update(name = "createPositionValidityCheck", guard = "approved_market_guard")]
-async fn create_position_validity_check(
-    user: Principal,
-    collateral: Amount,
-    debt: Amount,
-) -> (bool, u32) {
-    let account_balance = _get_user_margin_balance(user);
-
-    let mut staking_details = _get_vault_staking_details();
-
-    let valid = account_balance >= collateral && staking_details.free_liquidity >= debt;
-
-    if valid {
-        staking_details.free_liquidity -= debt;
-        staking_details.debt += debt;
-        _update_user_balance(user, collateral, false);
-    }
-
-    _update_vault_staking_details(staking_details);
-
-    return (valid, 0);
-}
-
-/// Updates position state and distributes fees when a position is modified or closed
-///
-/// # Arguments
-/// * `user` - Principal ID of position owner
-/// * `margin_delta` - Amount to return to user's margin balance
-/// * `manage_debt_params` - Parameters for debt repayment and fee calculation
-///
-/// # Effects
-/// - Updates user margin balance
-/// - Adjusts vault debt and liquidity
-/// - Distributes earned fees across stake spans
-#[ic_cdk::update(name = "managePositionUpdate", guard = "approved_market_guard")]
-async fn manage_position_update(
-    user: Principal,
-    margin_delta: Amount,
-    manage_debt_params: ManageDebtParams,
-) {
-    if margin_delta != 0 {
-        _update_user_balance(user, margin_delta, true);
-    }
-
-    let mut staking_details = _get_vault_staking_details();
-
-    let ManageDebtParams {
-        initial_debt,
-        net_debt,
-        amount_repaid,
-    } = &manage_debt_params;
-
-    staking_details.debt = staking_details.debt + net_debt - (initial_debt + amount_repaid);
-    staking_details.free_liquidity += amount_repaid;
-
-    let fees_gotten = if amount_repaid > initial_debt {
-        amount_repaid - initial_debt
-    } else {
-        return; // basically no fees
-    };
-
-    staking_details.lifetime_fees += fees_gotten;
-    staking_details._update_fees_across_span(fees_gotten);
-    _update_vault_staking_details(staking_details);
 }
 
 /// Funds a user's account with assets
@@ -338,7 +259,7 @@ async fn provide_leverage(amount: Amount) -> Result<bool, String> {
     let mut staking_details = _get_vault_staking_details();
     staking_details.free_liquidity += amount;
 
-    let stake: StakeDetails = staking_details._create_stake(amount, StakeSpan::Instant);
+    let stake: LockDetails = staking_details._create_stake(amount, LockSpan::Instant);
     _insert_user_stake(user, stake);
     _update_vault_staking_details(staking_details);
 
@@ -411,10 +332,10 @@ async fn remove_leverage(
 #[ic_cdk::update(name = "stakeVirtualTokens")]
 async fn stake_virtual_tokens(
     amount: Amount,
-    stake_span: StakeSpan,
+    stake_span: LockSpan,
     from_subaccount: Option<Subaccount>,
 ) -> Result<Amount, &'static str> {
-    if let StakeSpan::Instant = stake_span {
+    if let LockSpan::Instant = stake_span {
         return Err("Can not stake with instant stakespan");
     };
     let user = ic_cdk::caller();
@@ -477,7 +398,7 @@ async fn unstake_virtual_tokens(stake_timestamp: Time) -> Result<Amount, String>
     let stake_earnings = vault_staking_details._calc_stake_earnings(ref_stake);
 
     let amount_to_send = match ref_stake.stake_span {
-        StakeSpan::Instant => stake_earnings,
+        LockSpan::Instant => stake_earnings,
         _ => ref_stake.amount + stake_earnings,
     };
 
@@ -507,6 +428,85 @@ async fn unstake_virtual_tokens(stake_timestamp: Time) -> Result<Amount, String>
     return Ok(0);
 }
 
+/// Validates and processes a position creation request
+///
+/// # Arguments
+/// * `user` - Principal ID of the user creating position
+/// * `collateral` - Amount of collateral to lock
+/// * `debt` - Amount of leverage to borrow
+///
+/// # Returns
+/// * `(bool, u32)` - (validity status, interest rate)
+///   - First value indicates if user has sufficient margin balance and vault has enough liquidity
+///   - Second value is the interest rate for the borrowed amount
+///
+/// If valid, updates user's margin balance and vault's free liquidity by reducing both
+#[ic_cdk::update(name = "createPositionValidityCheck", guard = "approved_market_guard")]
+async fn create_position_validity_check(
+    user: Principal,
+    collateral: Amount,
+    debt: Amount,
+) -> (bool, u32) {
+    let account_balance = _get_user_margin_balance(user);
+
+    let mut staking_details = _get_vault_staking_details();
+
+    let valid = account_balance >= collateral && staking_details.free_liquidity >= debt;
+
+    if valid {
+        staking_details.free_liquidity -= debt;
+        staking_details.debt += debt;
+        _update_user_balance(user, collateral, false);
+    }
+
+    _update_vault_staking_details(staking_details);
+
+    return (valid, 0);
+}
+
+/// Updates position state and distributes fees when a position is modified or closed
+///
+/// # Arguments
+/// * `user` - Principal ID of position owner
+/// * `margin_delta` - Amount to return to user's margin balance
+/// * `manage_debt_params` - Parameters for debt repayment and fee calculation
+///
+/// # Effects
+/// - Updates user margin balance
+/// - Adjusts vault debt and liquidity
+/// - Distributes earned fees across stake spans
+#[ic_cdk::update(name = "managePositionUpdate", guard = "approved_market_guard")]
+async fn manage_position_update(
+    user: Principal,
+    margin_delta: Amount,
+    manage_debt_params: ManageDebtParams,
+) {
+    if margin_delta != 0 {
+        _update_user_balance(user, margin_delta, true);
+    }
+
+    let mut staking_details = _get_vault_staking_details();
+
+    let ManageDebtParams {
+        initial_debt,
+        net_debt,
+        amount_repaid,
+    } = &manage_debt_params;
+
+    staking_details.debt = staking_details.debt + net_debt - (initial_debt + amount_repaid);
+    staking_details.free_liquidity += amount_repaid;
+
+    let fees_gotten = if amount_repaid > initial_debt {
+        amount_repaid - initial_debt
+    } else {
+        return; // basically no fees
+    };
+
+    staking_details.lifetime_fees += fees_gotten;
+    staking_details._update_fees_across_span(fees_gotten);
+    _update_vault_staking_details(staking_details);
+}
+
 /// Update user balance
 
 fn _update_user_balance(user: Principal, delta: Amount, deposit: bool) {
@@ -525,11 +525,11 @@ fn _update_user_balance(user: Principal, delta: Amount, deposit: bool) {
     });
 }
 
-fn _get_vault_staking_details() -> VaultStakingDetails {
+fn _get_vault_staking_details() -> VaultLockDetails {
     VAULT_STAKING_DETAILS.with(|reference| reference.borrow().get().clone())
 }
 
-fn _update_vault_staking_details(new_details: VaultStakingDetails) {
+fn _update_vault_staking_details(new_details: VaultLockDetails) {
     VAULT_STAKING_DETAILS.with_borrow_mut(|reference| [reference.set(new_details).unwrap()]);
 }
 
@@ -547,15 +547,18 @@ fn _get_user_margin_balance(user: Principal) -> Amount {
     })
 }
 
-fn _get_user_stake(user: Principal, timestamp: Time) -> StakeDetails {
+fn _get_user_stake(user: Principal, timestamp: Time) -> LockDetails {
     USERS_STAKES.with_borrow(|reference| reference.get(&(user, timestamp)).unwrap())
 }
 
-fn _get_user_stakes(user: Principal) -> Vec<(Time, StakeDetails)> {
+fn _get_user_stakes(user: Principal) -> Vec<(Time, LockDetails, Amount)> {
     USERS_STAKES.with_borrow(|reference| {
         let iter_map = reference.iter().filter_map(|entries| {
             if entries.0 .0 == user {
-                return Some((entries.0 .1, entries.1));
+                let ref_stake = entries.1;
+                let vault_staking_details = _get_vault_staking_details();
+                let fees_earned = vault_staking_details._calc_stake_earnings(ref_stake);
+                return Some((entries.0 .1, ref_stake, fees_earned));
             }
             None
         });
@@ -568,7 +571,7 @@ fn _get_user_stakes(user: Principal) -> Vec<(Time, StakeDetails)> {
     })
 }
 
-fn _insert_user_stake(user: Principal, stake: StakeDetails) {
+fn _insert_user_stake(user: Principal, stake: LockDetails) {
     let timestamp = ic_cdk::api::time();
     USERS_STAKES.with_borrow_mut(|reference| reference.insert((user, timestamp), stake));
 }

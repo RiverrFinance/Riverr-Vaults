@@ -21,7 +21,7 @@ fn test_creating_stake_with_stakespan_instant_fails() {
         caller,
         vault_id,
         amount_utilised,
-        StakeSpan::Instant,
+        LockSpan::Instant,
         None,
     );
 
@@ -53,7 +53,7 @@ fn test_creating_stake_with_amount_less_tahn_min_amount_fails() {
         caller,
         vault_id,
         amount_utilised,
-        StakeSpan::Month2,
+        LockSpan::Month2,
         None,
     );
 
@@ -81,7 +81,7 @@ fn test_that_transaction_fails_without_spending_approval_for_canister() {
         caller,
         vault_id,
         amount_utilised,
-        StakeSpan::Month2,
+        LockSpan::Month2,
         None,
     );
 
@@ -109,7 +109,7 @@ fn test_that_despoit_succeeds_when_all_conditons_are_satisfied() {
         caller,
         vault_id,
         amount_utilised,
-        StakeSpan::Month2,
+        LockSpan::Month2,
         None,
     );
 
@@ -122,11 +122,11 @@ fn test_that_despoit_succeeds_when_all_conditons_are_satisfied() {
 
     let default_user_stake = user_stakes[0].1;
 
-    assert_eq!(default_user_stake.stake_span, StakeSpan::Instant);
+    assert_eq!(default_user_stake.stake_span, LockSpan::Instant);
     assert_eq!(default_user_stake.amount, amount_utilised);
 
     let user_stake = user_stakes[1].1;
 
-    assert_eq!(user_stake.stake_span, StakeSpan::Month2);
+    assert_eq!(user_stake.stake_span, LockSpan::Month2);
     assert_eq!(user_stake.amount, amount_utilised)
 }

@@ -191,7 +191,7 @@ pub fn _get_vault_staking_details(
     pic: &PocketIc,
     vault_id: Principal,
     caller: Principal,
-) -> VaultStakingDetails {
+) -> VaultLockDetails {
     match pic.query_call(
         vault_id,
         caller,
@@ -217,7 +217,7 @@ pub fn _get_user_stakes(
     pic: &PocketIc,
     vault_id: Principal,
     caller: Principal,
-) -> Vec<(Time, StakeDetails)> {
+) -> Vec<(Time, LockDetails)> {
     match pic.query_call(
         vault_id,
         caller,
@@ -244,7 +244,7 @@ pub fn _stake(
     caller: Principal,
     vault_id: Principal,
     amount: Amount,
-    span: StakeSpan,
+    span: LockSpan,
     from_subaccount: Option<Subaccount>,
 ) -> Result<Amount, String> {
     let Ok(WasmResult::Reply(val)) = pic.update_call(

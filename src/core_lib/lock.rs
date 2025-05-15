@@ -19,7 +19,7 @@ const YEAR: Time = 31_536_000_000_000_000;
 const MONTH: Time = 2_628_000_000_000_000;
 
 #[derive(Copy, Clone, Deserialize, Debug, CandidType, PartialEq, Eq)]
-pub enum StakeSpan {
+pub enum LockSpan {
     Instant,
     Month2,
     Month6,
@@ -27,14 +27,14 @@ pub enum StakeSpan {
 }
 
 #[derive(Deserialize, CandidType, Debug, Copy, Clone)]
-pub struct StakeDetails {
-    pub stake_span: StakeSpan,
+pub struct LockDetails {
+    pub stake_span: LockSpan,
     pub amount: Amount,
     pub expiry_time: Time,
     pub pre_earnings: Amount,
 }
 
-impl Storable for StakeDetails {
+impl Storable for LockDetails {
     const BOUND: Bound = Bound::Bounded {
         max_size: 74,
         is_fixed_size: false,
@@ -49,7 +49,7 @@ impl Storable for StakeDetails {
 }
 
 #[derive(CandidType, Deserialize, Default, Clone)]
-pub struct VaultStakingDetails {
+pub struct VaultLockDetails {
     pub debt: Amount,
     pub free_liquidity: Amount,
     pub lifetime_fees: Amount,
@@ -59,7 +59,7 @@ pub struct VaultStakingDetails {
     pub span12_details: StakeDurationDetails,
 }
 
-impl VaultStakingDetails {
+impl VaultLockDetails {
     /// Create Stake function
     ///
     ///
@@ -70,7 +70,7 @@ impl VaultStakingDetails {
     ///
     /// Returns
     ///  - StakeDetails :The details of the newly created stake
-    pub fn _create_stake(&mut self, amount: Amount, stake_span: StakeSpan) -> StakeDetails {
+    pub fn _create_stake(&mut self, amount: Amount, stake_span: LockSpan) -> LockDetails {
         let (span_lifetime_earnings_per_token, span_init_total_locked, expiry_time) =
             self._update_specific_span_details(amount, stake_span, true);
 
@@ -80,7 +80,7 @@ impl VaultStakingDetails {
             (amount * span_lifetime_earnings_per_token) / base_units()
         };
 
-        let stake_details = StakeDetails {
+        let stake_details = LockDetails {
             stake_span,
             amount,
             pre_earnings,
@@ -117,19 +117,19 @@ impl VaultStakingDetails {
     ///
     /// Returns
     /// - Amount - The total earnings for this stake (current earnings minus pre-earnings)
-    pub fn _calc_stake_earnings(&self, ref_stake: StakeDetails) -> Amount {
+    pub fn _calc_stake_earnings(&self, ref_stake: LockDetails) -> Amount {
         let lifetime_earnings_per_token;
         match ref_stake.stake_span {
-            StakeSpan::Instant => {
+            LockSpan::Instant => {
                 lifetime_earnings_per_token = self.span0_details.lifetime_earnings_per_token
             }
-            StakeSpan::Month2 => {
+            LockSpan::Month2 => {
                 lifetime_earnings_per_token = self.span2_details.lifetime_earnings_per_token
             }
-            StakeSpan::Month6 => {
+            LockSpan::Month6 => {
                 lifetime_earnings_per_token = self.span6_details.lifetime_earnings_per_token
             }
-            StakeSpan::Year => {
+            LockSpan::Year => {
                 lifetime_earnings_per_token = self.span12_details.lifetime_earnings_per_token
             }
         };
@@ -148,12 +148,20 @@ impl VaultStakingDetails {
     ///
     /// Returns
     ///  - Earnings :The amount earned by the particular stake for the entire staking duration
-    pub fn _close_stake(&mut self, reference_stake: StakeDetails) {
+    pub fn _close_stake(&mut self, reference_stake: LockDetails) {
         match reference_stake.stake_span {
-            StakeSpan::Instant => self.span0_details.update(reference_stake.amount, false),
-            StakeSpan::Month2 => self.span2_details.update(reference_stake.amount, false),
-            StakeSpan::Month6 => self.span6_details.update(reference_stake.amount, false),
-            StakeSpan::Year => self.span12_details.update(reference_stake.amount, false),
+            LockSpan::Instant => self
+                .span0_details
+                .update_total_locked(reference_stake.amount, false),
+            LockSpan::Month2 => self
+                .span2_details
+                .update_total_locked(reference_stake.amount, false),
+            LockSpan::Month6 => self
+                .span6_details
+                .update_total_locked(reference_stake.amount, false),
+            LockSpan::Year => self
+                .span12_details
+                .update_total_locked(reference_stake.amount, false),
         };
     }
 
@@ -179,7 +187,7 @@ impl VaultStakingDetails {
     pub fn _update_specific_span_details(
         &mut self,
         amount: Amount,
-        specific_span: StakeSpan,
+        specific_span: LockSpan,
         lock: bool,
     ) -> (Amount, Amount, Time) {
         let span_lifetime_earnings_per_token;
@@ -187,24 +195,36 @@ impl VaultStakingDetails {
         let expiry_time;
 
         match specific_span {
-            StakeSpan::Instant => {
+            LockSpan::Instant => {
                 span_init_total_locked = self.span0_details.total_locked;
-                span_lifetime_earnings_per_token = self.span0_details.update(amount, lock);
+
+                span_lifetime_earnings_per_token =
+                    self.span0_details._lifetime_earnings_per_token();
+                self.span0_details.update_total_locked(amount, lock);
                 expiry_time = ic_cdk::api::time()
             }
-            StakeSpan::Month2 => {
+            LockSpan::Month2 => {
                 span_init_total_locked = self.span2_details.total_locked;
-                span_lifetime_earnings_per_token = self.span2_details.update(amount, lock);
+
+                span_lifetime_earnings_per_token =
+                    self.span2_details._lifetime_earnings_per_token();
+                self.span2_details.update_total_locked(amount, lock);
                 expiry_time = ic_cdk::api::time() + (2 * MONTH);
             }
-            StakeSpan::Month6 => {
+            LockSpan::Month6 => {
                 span_init_total_locked = self.span6_details.total_locked;
-                span_lifetime_earnings_per_token = self.span6_details.update(amount, lock);
+
+                span_lifetime_earnings_per_token =
+                    self.span6_details._lifetime_earnings_per_token();
+                self.span6_details.update_total_locked(amount, lock);
                 expiry_time = ic_cdk::api::time() + (6 * MONTH)
             }
-            StakeSpan::Year => {
+            LockSpan::Year => {
                 span_init_total_locked = self.span12_details.total_locked;
-                span_lifetime_earnings_per_token = self.span12_details.update(amount, lock);
+
+                span_lifetime_earnings_per_token =
+                    self.span12_details._lifetime_earnings_per_token();
+                self.span12_details.update_total_locked(amount, lock);
                 expiry_time = ic_cdk::api::time() + YEAR
             }
         }
@@ -217,7 +237,7 @@ impl VaultStakingDetails {
     }
 }
 
-impl Storable for VaultStakingDetails {
+impl Storable for VaultLockDetails {
     const BOUND: Bound = Bound::Unbounded;
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Decode!(bytes.as_ref(), Self).unwrap()
@@ -239,6 +259,9 @@ pub struct StakeDurationDetails {
 }
 
 impl StakeDurationDetails {
+    pub fn _lifetime_earnings_per_token(&self) -> Amount {
+        return self.lifetime_earnings_per_token;
+    }
     /// Updates fees for a staking duration
     ///
     /// # Parameters
@@ -258,10 +281,10 @@ impl StakeDurationDetails {
         };
 
         // new earnings
-        let staked_new_earnings = _percentage128(percentage, fees_earned);
+        let locked_new_earnings = _percentage128(percentage, fees_earned);
 
         let span_new_earnings_per_token =
-            (staked_new_earnings * share * base_units()) / (total_share * init_total_locked);
+            (locked_new_earnings * share * base_units()) / (total_share * init_total_locked);
 
         self.lifetime_earnings_per_token += span_new_earnings_per_token;
     }
@@ -273,14 +296,12 @@ impl StakeDurationDetails {
     ///
     /// # Returns
     /// The lifetime earnings per staked token
-    pub fn update(&mut self, amount: Amount, lock: bool) -> Amount {
+    pub fn update_total_locked(&mut self, amount: Amount, lock: bool) {
         if lock {
             self.total_locked += amount
         } else {
             self.total_locked -= amount
         };
-
-        return self.lifetime_earnings_per_token;
     }
 }
 

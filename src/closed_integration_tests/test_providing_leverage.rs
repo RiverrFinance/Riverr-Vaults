@@ -88,7 +88,7 @@ mod providing_leverage {
 
         let user_stake = user_stakes[0].1;
 
-        assert_eq!(user_stake.stake_span, StakeSpan::Instant);
+        assert_eq!(user_stake.stake_span, LockSpan::Instant);
         assert_eq!(user_stake.amount, amount_utilised)
     }
 }
