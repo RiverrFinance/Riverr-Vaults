@@ -1,8 +1,8 @@
 {
   "canisters": {
-    "vault": {
-      "candid": "src/vault.did",
-      "package": "vault",
+    "liquidity_manager": {
+      "candid": "src/liquidity_manager.did",
+      "package": "liquidity_manager",
       "type": "rust"
     },
     "token": {

@@ -49,17 +49,17 @@ impl Storable for LockDetails {
 }
 
 #[derive(CandidType, Deserialize, Default, Clone)]
-pub struct VaultLockDetails {
+pub struct Vault {
     pub debt: Amount,
     pub free_liquidity: Amount,
     pub lifetime_fees: Amount,
-    pub span0_details: StakeDurationDetails,
-    pub span2_details: StakeDurationDetails,
-    pub span6_details: StakeDurationDetails,
-    pub span12_details: StakeDurationDetails,
+    pub span0_details: LockDurationDetails,
+    pub span2_details: LockDurationDetails,
+    pub span6_details: LockDurationDetails,
+    pub span12_details: LockDurationDetails,
 }
 
-impl VaultLockDetails {
+impl Vault {
     /// Create Stake function
     ///
     ///
@@ -70,7 +70,7 @@ impl VaultLockDetails {
     ///
     /// Returns
     ///  - StakeDetails :The details of the newly created stake
-    pub fn _create_stake(&mut self, amount: Amount, stake_span: LockSpan) -> LockDetails {
+    pub fn _create_lock(&mut self, amount: Amount, stake_span: LockSpan) -> LockDetails {
         let (span_lifetime_earnings_per_token, span_init_total_locked, expiry_time) =
             self._update_specific_span_details(amount, stake_span, true);
 
@@ -117,7 +117,7 @@ impl VaultLockDetails {
     ///
     /// Returns
     /// - Amount - The total earnings for this stake (current earnings minus pre-earnings)
-    pub fn _calc_stake_earnings(&self, ref_stake: LockDetails) -> Amount {
+    pub fn _calc_lock_earnings(&self, ref_stake: LockDetails) -> Amount {
         let lifetime_earnings_per_token;
         match ref_stake.stake_span {
             LockSpan::Instant => {
@@ -148,7 +148,7 @@ impl VaultLockDetails {
     ///
     /// Returns
     ///  - Earnings :The amount earned by the particular stake for the entire staking duration
-    pub fn _close_stake(&mut self, reference_stake: LockDetails) {
+    pub fn _open_lock(&mut self, reference_stake: LockDetails) {
         match reference_stake.stake_span {
             LockSpan::Instant => self
                 .span0_details
@@ -237,7 +237,7 @@ impl VaultLockDetails {
     }
 }
 
-impl Storable for VaultLockDetails {
+impl Storable for Vault {
     const BOUND: Bound = Bound::Unbounded;
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
         Decode!(bytes.as_ref(), Self).unwrap()
@@ -249,7 +249,7 @@ impl Storable for VaultLockDetails {
 }
 
 #[derive(Clone, Deserialize, CandidType, Default)]
-pub struct StakeDurationDetails {
+pub struct LockDurationDetails {
     /// The total Amount earned by a single token since span creation
     pub lifetime_earnings_per_token: Amount,
     /// Total Locked
@@ -258,7 +258,7 @@ pub struct StakeDurationDetails {
     pub total_locked: Amount,
 }
 
-impl StakeDurationDetails {
+impl LockDurationDetails {
     pub fn _lifetime_earnings_per_token(&self) -> Amount {
         return self.lifetime_earnings_per_token;
     }

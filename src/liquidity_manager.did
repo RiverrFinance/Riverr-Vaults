@@ -1,0 +1,52 @@
+type Account = record { owner : principal; subaccount : opt blob };
+type Asset = record { asset_type : AssetType; ledger_id : principal };
+type AssetType = variant { ICP; ICRC };
+type LiquidityManagerDetails = record {
+  asset : Asset;
+  min_amount : nat;
+  virtual_asset : Asset;
+};
+type LockDetails = record {
+  stake_span : LockSpan;
+  expiry_time : nat64;
+  pre_earnings : nat;
+  amount : nat;
+};
+type LockDurationDetails = record {
+  total_locked : nat;
+  lifetime_earnings_per_token : nat;
+};
+type LockSpan = variant { Year; Instant; Month2; Month6 };
+type ManageDebtParams = record {
+  initial_debt : nat;
+  amount_repaid : nat;
+  net_debt : nat;
+};
+type Result = variant { Ok; Err : text };
+type Result_1 = variant { Ok : bool; Err : text };
+type Result_2 = variant { Ok : nat; Err : text };
+type Result_3 = variant { Ok : nat; Err : text };
+type Vault = record {
+  free_liquidity : nat;
+  span12_details : LockDurationDetails;
+  debt : nat;
+  span2_details : LockDurationDetails;
+  lifetime_fees : nat;
+  span6_details : LockDurationDetails;
+  span0_details : LockDurationDetails;
+};
+service : (LiquidityManagerDetails) -> {
+  approveMarket : (principal) -> (Result);
+  collectFromVault : (nat, opt blob) -> (Result_1);
+  fundAccount : (nat, opt blob, principal) -> (Result_2);
+  getLiquidityManagerDetails : () -> (LiquidityManagerDetails) query;
+  getUserLocks : (principal) -> (vec record { nat64; LockDetails; nat }) query;
+  getUserMarginBalance : (principal) -> (nat) query;
+  getVault : () -> (Vault) query;
+  lendToVault : (nat) -> (Result_1);
+  liquidityChangeValidityCheck : (principal, nat, nat) -> (bool, nat32);
+  lockQTokens : (nat, LockSpan, opt blob) -> (Result_3);
+  managePositionUpdate : (principal, nat, ManageDebtParams) -> ();
+  unlockQTokens : (nat64) -> (Result_3);
+  withdrawFromAccount : (nat, Account) -> (Result_3);
+}

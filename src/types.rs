@@ -12,13 +12,13 @@ use ic_stable_structures::{storable::Bound, Storable};
 type Amount = u128;
 
 #[derive(CandidType, Serialize, Default, Deserialize, Clone)]
-pub struct VaultDetails {
+pub struct LiquidityManagerDetails {
     pub asset: Asset,
     pub virtual_asset: Asset,
     pub min_amount: Amount,
 }
 
-impl Storable for VaultDetails {
+impl Storable for LiquidityManagerDetails {
     const BOUND: Bound = Bound::Unbounded;
     fn from_bytes(bytes: Cow<[u8]>) -> Self {
         bincode::deserialize(bytes.as_ref()).expect("Failed to deserialize VaultDetails")

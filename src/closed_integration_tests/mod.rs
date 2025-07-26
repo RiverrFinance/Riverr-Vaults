@@ -9,12 +9,12 @@ use std::fs;
 
 use super::*;
 
-use crate::types::VaultDetails;
+use crate::types::LiquidityManagerDetails;
 
 use crate::core_lib::asset::{Asset, AssetType};
 
 const TOKEN_WASM: &str = "target/wasm32-unknown-unknown/release/token.wasm";
-const VAULT_WASM: &str = "target/wasm32-unknown-unknown/release/vault.wasm";
+const VAULT_WASM: &str = "target/wasm32-unknown-unknown/release/liquidity_manager.wasm";
 
 pub mod deposit_test;
 pub mod staking;
@@ -60,7 +60,7 @@ pub fn _setup_vault(init_pic: &PocketIc, min_amount: u128) -> (Principal, Princi
         Some(Principal::anonymous()),
     );
 
-    let vauilt_args = VaultDetails {
+    let vauilt_args = LiquidityManagerDetails {
         asset: Asset {
             asset_type: AssetType::ICRC,
             ledger_id: token_id,
@@ -106,13 +106,10 @@ pub fn _provide_leverage(
     amount: Amount,
     caller: Principal,
 ) -> Result<bool, String> {
-    let Ok(WasmResult::Reply(val)) = pic.update_call(
-        vault_id,
-        caller,
-        "provideLeverage",
-        encode_one(amount).unwrap(),
-    ) else {
-        panic!("Could not provide leverage")
+    let Ok(WasmResult::Reply(val)) =
+        pic.update_call(vault_id, caller, "lendToVault", encode_one(amount).unwrap())
+    else {
+        panic!("Could not lend to vault")
     };
 
     let reply: Result<bool, String> = decode_one(&val).unwrap();
@@ -187,15 +184,11 @@ pub fn _icrc2_approve(
     }
 }
 
-pub fn _get_vault_staking_details(
-    pic: &PocketIc,
-    vault_id: Principal,
-    caller: Principal,
-) -> VaultLockDetails {
+pub fn _get_vault(pic: &PocketIc, vault_id: Principal, caller: Principal) -> Vault {
     match pic.query_call(
         vault_id,
         caller,
-        "getVaultStakingDetails",
+        "getVault",
         candid::encode_args(()).unwrap(),
     ) {
         Ok(reply) => {
@@ -217,11 +210,11 @@ pub fn _get_user_stakes(
     pic: &PocketIc,
     vault_id: Principal,
     caller: Principal,
-) -> Vec<(Time, LockDetails)> {
+) -> Vec<(Time, LockDetails, Amount)> {
     match pic.query_call(
         vault_id,
         caller,
-        "getUserStakes",
+        "getUserLocks",
         candid::encode_one(caller).unwrap(),
     ) {
         Ok(reply) => {
@@ -250,10 +243,10 @@ pub fn _stake(
     let Ok(WasmResult::Reply(val)) = pic.update_call(
         vault_id,
         caller,
-        "stakeVirtualTokens",
+        "lockQTokens",
         candid::encode_args((amount, span, from_subaccount)).unwrap(),
     ) else {
-        panic!("create stake failed")
+        panic!("create lock failed")
     };
 
     let reply = candid::decode_one(&val);

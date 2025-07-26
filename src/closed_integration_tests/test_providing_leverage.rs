@@ -45,8 +45,7 @@ mod providing_leverage {
 
         let (token_id, _, vault_id) = _setup_vault(&pic, 0);
 
-        let vault_staking_details_before =
-            _get_vault_staking_details(&pic, vault_id, Principal::anonymous());
+        let vault_staking_details_before = _get_vault(&pic, vault_id, Principal::anonymous());
 
         let initial_free_liquidity = vault_staking_details_before.free_liquidity;
         let caller = _get_principals()[1];
@@ -57,8 +56,7 @@ mod providing_leverage {
 
         let _ = _provide_leverage(&pic, vault_id, amount_utilised, caller);
 
-        let vault_staking_details_after =
-            _get_vault_staking_details(&pic, vault_id, Principal::anonymous());
+        let vault_staking_details_after = _get_vault(&pic, vault_id, Principal::anonymous());
 
         let free_liquidity_after = vault_staking_details_after.free_liquidity;
 

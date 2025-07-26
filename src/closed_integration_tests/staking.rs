@@ -31,7 +31,7 @@ fn test_creating_stake_with_stakespan_instant_fails() {
 }
 
 #[test]
-fn test_creating_stake_with_amount_less_tahn_min_amount_fails() {
+fn test_creating_stake_with_amount_less_than_min_amount_fails() {
     let caller = _get_principals()[1];
 
     let pic = PocketIc::new();
