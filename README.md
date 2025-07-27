@@ -1,6 +1,6 @@
-# **Liquidity Manager Actor**
+# **Vault Actor**
 
-The Liquidity Manager actor serves as an asset manager for the entire Riverr Protocol infrastructure. Each vault houses one collateral asset and its corresponding lock token. This document provides a detailed explanation of the Vault Canister's functionality, including depositing tokens, trading, providing leverage, and staking.
+The Vault actor serves as an asset manager for the entire Riverr Protocol infrastructure. Each vault houses one collateral asset and its corresponding lock token. This document provides a detailed explanation of the Vault Canister's functionality, including depositing tokens, trading, providing leverage, and staking.
 
 ## **Mechanism of Operation**
 
@@ -19,7 +19,7 @@ After depositing, users have two main options:
 
 ## **Trading**
 
-<p>When trading on any market, the market calls the Liquidity Manager Canister to move the required amount of collateral from the user's account before opening a position. This ensures that the necessary collateral is secured for the trade. Note that only markets with the vault-specified token as collateral are supported. If the user is trading on leverage, it also locks up the amount specified as leverage if it is available.</p>
+<p>When trading on any market, the market canister calls the Vault Canister to move the required amount of collateral from the user's account before opening a position. This ensures that the necessary collateral is secured for the trade. Note that only markets with the vault-specified token as collateral are supported. If the user is trading on leverage, it also locks up the amount specified as leverage if it is available.</p>
 
 ## **Leverage Provision**
 
@@ -37,8 +37,7 @@ Leverage  providers get the Qtoken for providing leverage ,this is basically a 1
 + ### **To Withdraw Leverage**
 
    Users call ICRC2 approval function on the Qtoken to approve spending by the canister,specifying the amount and then call withdraw leverage function on the vault canister <br>
-   ***NOTE*** : Withdrawals can only be made if the liquidity manager canis
-   ter has that amount of liqudity available at that time,which is dependent on the current pool utilization rate baiscally the amount of debt owned by traders comapred to the total amount provided by leverage providers
+   ***NOTE*** : Withdrawals can only be made if the liquidity manager canister has that amount of liqudity available at that time,which is dependent on the current pool utilization rate baiscally the amount of debt owned by traders comapred to the total amount provided by leverage providers
 
 ## **Locking QTokens**
 

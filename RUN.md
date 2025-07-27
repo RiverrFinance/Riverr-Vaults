@@ -1,4 +1,4 @@
-## Building Locally
+## Running Locally
 
  <p> to build project locally install all dependencies then run 
 
@@ -32,7 +32,7 @@ cycles_for_archive_creation = opt 10000000000000;};token_name = \"ICP\";feature_
 })"  # --network ic --subnet ${SUBNET}
 ```
 
-### **Create Empty canisters for vtoken Liqudity Manager**
+### **Create Empty canisters for vtoken and Vault**
 
 ```sh
 export INIT_CYCLES=2500000000000
@@ -44,7 +44,7 @@ export INIT_CYCLES=3000000000000
 dfx canister create vault   --with-cycles ${INIT_CYCLES}  #--network ic --subnet ${SUBNET}
 ```
 
-### **Deploy Vtokens and Liquidity Manager canister**
+### **Deploy Vtokens and Vault canister**
 
 ```sh
 export CONTROLLER=$(dfx identity get-principal)
@@ -57,22 +57,10 @@ cycles_for_archive_creation = opt 10000000000000;};token_name = \"Quotex ICP\";f
 ```
 
 ```sh
-
-```
-
-```sh
 export TOKEN=$(dfx canister id token  --network ic)
 export VTOKEN=$(dfx canister id vtoken --network ic)
 export MINAMOUNT=10000000
 
-dfx deploy liquidity_manager --argument "(record {asset = record { asset_type = variant  {ICRC} ; ledger_id = principal \"${TOKEN}\"};min_amount = ${MINAMOUNT};
+dfx deploy vault --argument "(record {asset = record { asset_type = variant  {ICRC} ; ledger_id = principal \"${TOKEN}\"};min_amount = ${MINAMOUNT};
 virtual_asset = record { asset_type = variant {ICRC} ; ledger_id = principal \"${VTOKEN}\";}})" #--network ic 
-```
-
-```sh
-dfx canister call liquidity_manager approveMarket "(principal \"i4w3l-hiaaa-aaaaf-qao5a-cai\")" --network ic 
-```
-
-```sh
-dfx canister  uninstall-code liquidity_manager --network ic
 ```
