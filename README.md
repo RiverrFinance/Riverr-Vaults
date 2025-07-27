@@ -50,3 +50,6 @@ Users can lockup QTokens gotten from providing leverage for a specific peroid of
 > - **12 months**: Offers the highest yield among the available spans.<br>
 >
 > The prospective yields increase in the same order, providing better returns for >longer staking periods.
+
+## **For local development** 
+for local development and testing see RUN.md 
