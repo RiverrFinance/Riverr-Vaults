@@ -1,6 +1,6 @@
 # **Liquidity Manager Actor**
 
-The Liquidity Manager actor serves as an asset manager for the entire Quotex Protocol infrastructure. Each vault houses one collateral asset and its corresponding lock token. This document provides a detailed explanation of the Vault Canister's functionality, including depositing tokens, trading, providing leverage, and staking.
+The Liquidity Manager actor serves as an asset manager for the entire Riverr Protocol infrastructure. Each vault houses one collateral asset and its corresponding lock token. This document provides a detailed explanation of the Vault Canister's functionality, including depositing tokens, trading, providing leverage, and staking.
 
 ## **Mechanism of Operation**
 
